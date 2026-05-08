@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -22,9 +22,11 @@ import { useGenogramStore } from '@/lib/store/genogramStore';
 import { useDbPersistence } from '@/lib/db/persistence';
 import { initHistoryRecorder } from '@/lib/store/history';
 import { RelationshipType } from '@/lib/types/relationship';
+import { computeAutoSiblingJunctions } from '@/lib/layout/autoSiblingJunctions';
 import { PersonNode } from './PersonNode';
 import { JunctionNode } from './JunctionNode';
 import { RelationshipEdge } from './RelationshipEdge';
+import { JunctionEdge } from './JunctionEdge';
 import Toolbar from './Toolbar';
 import InfoPanel from './InfoPanel';
 import RelationshipInspector from './RelationshipInspector';
@@ -39,6 +41,7 @@ const nodeTypes = {
 
 const edgeTypes = {
   relationship: RelationshipEdge,
+  'junction-edge': JunctionEdge,
 };
 
 export default function GenogramCanvas() {
@@ -58,14 +61,21 @@ export default function GenogramCanvas() {
     deleteJunction,
     addJunctionEdge,
     deleteJunctionEdge,
-    setSelectedPerson,
-    setSelectedRelationship,
+    clearSelection,
   } = useGenogramStore();
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [pendingConnection, setPendingConnection] =
     useState<PendingConnection | null>(null);
+
+  // Derive synthetic sibling-line junctions from the relationship graph so
+  // that 2+ kids who share the same parent set are drawn off a single line
+  // (genogram convention). These are render-only — never persisted.
+  const autoSibling = useMemo(
+    () => computeAutoSiblingJunctions(people, relationships),
+    [people, relationships]
+  );
 
   // Persist final node position when dragging stops
   const handleNodeDragStop = useCallback(
@@ -96,7 +106,8 @@ export default function GenogramCanvas() {
     [onNodesChange, nodes, deleteJunction]
   );
 
-  // Derive nodes from people and junctions
+  // Derive nodes from people, persisted junctions, and synthetic
+  // sibling-line junctions.
   useEffect(() => {
     const personNodes: Node[] = people.map((person) => ({
       id: person.id,
@@ -112,52 +123,56 @@ export default function GenogramCanvas() {
       data: { id: junction.id },
     }));
 
-    setNodes([...personNodes, ...junctionNodes]);
-  }, [people, junctions, setNodes]);
+    setNodes([...personNodes, ...junctionNodes, ...autoSibling.nodes]);
+  }, [people, junctions, autoSibling.nodes, setNodes]);
 
-  // Sync edges from relationships + junction edges in the store.
+  // Sync edges from relationships + persisted junction edges + synthetic
+  // sibling-line junction edges.
   // Note: spouse handle direction is computed from the latest people positions
   // but we intentionally do NOT depend on `nodes` to avoid rebuilding edges on every drag tick.
   useEffect(() => {
     const personById = new Map(people.map((p) => [p.id, p]));
+    const coveredRelIds = autoSibling.coveredRelationshipIds;
 
-    const relationshipEdges: Edge[] = relationships.map((rel) => {
-      const isHorizontal =
-        rel.type === 'spouse' ||
-        rel.type === 'partner' ||
-        rel.type === 'divorced' ||
-        rel.type === 'separated';
+    const relationshipEdges: Edge[] = relationships
+      .filter((rel) => !coveredRelIds.has(rel.id))
+      .map((rel) => {
+        const isHorizontal =
+          rel.type === 'spouse' ||
+          rel.type === 'partner' ||
+          rel.type === 'divorced' ||
+          rel.type === 'separated';
 
-      let sourceHandle = 'bottom';
-      let targetHandle = 'top';
+        let sourceHandle = 'bottom';
+        let targetHandle = 'top';
 
-      if (isHorizontal) {
-        const source = personById.get(rel.person1Id);
-        const target = personById.get(rel.person2Id);
-        if (source?.position && target?.position) {
-          if (source.position.x < target.position.x) {
+        if (isHorizontal) {
+          const source = personById.get(rel.person1Id);
+          const target = personById.get(rel.person2Id);
+          if (source?.position && target?.position) {
+            if (source.position.x < target.position.x) {
+              sourceHandle = 'right';
+              targetHandle = 'left';
+            } else {
+              sourceHandle = 'left';
+              targetHandle = 'right';
+            }
+          } else {
             sourceHandle = 'right';
             targetHandle = 'left';
-          } else {
-            sourceHandle = 'left';
-            targetHandle = 'right';
           }
-        } else {
-          sourceHandle = 'right';
-          targetHandle = 'left';
         }
-      }
 
-      return {
-        id: rel.id,
-        source: rel.person1Id,
-        target: rel.person2Id,
-        sourceHandle,
-        targetHandle,
-        type: 'relationship',
-        data: rel,
-      };
-    });
+        return {
+          id: rel.id,
+          source: rel.person1Id,
+          target: rel.person2Id,
+          sourceHandle,
+          targetHandle,
+          type: 'relationship',
+          data: rel,
+        };
+      });
 
     const junctionFlowEdges: Edge[] = junctionEdges.map((je) => ({
       id: je.id,
@@ -165,10 +180,22 @@ export default function GenogramCanvas() {
       target: je.target,
       sourceHandle: je.sourceHandle,
       targetHandle: je.targetHandle,
+      type: 'junction-edge',
     }));
 
-    setEdges([...relationshipEdges, ...junctionFlowEdges]);
-  }, [relationships, junctionEdges, people, setEdges]);
+    setEdges([
+      ...relationshipEdges,
+      ...junctionFlowEdges,
+      ...autoSibling.edges,
+    ]);
+  }, [
+    relationships,
+    junctionEdges,
+    people,
+    autoSibling.edges,
+    autoSibling.coveredRelationshipIds,
+    setEdges,
+  ]);
 
   // Keep store in sync when edges are changed via React Flow
   const handleEdgesChange = useCallback(
@@ -315,9 +342,8 @@ export default function GenogramCanvas() {
   );
 
   const handlePaneClick = useCallback(() => {
-    setSelectedPerson(null);
-    setSelectedRelationship(null);
-  }, [setSelectedPerson, setSelectedRelationship]);
+    clearSelection();
+  }, [clearSelection]);
 
   return (
     <div className="w-full h-screen relative">
@@ -335,6 +361,7 @@ export default function GenogramCanvas() {
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           connectionMode={ConnectionMode.Loose}
+          deleteKeyCode={null}
           fitView
         >
           <Controls />

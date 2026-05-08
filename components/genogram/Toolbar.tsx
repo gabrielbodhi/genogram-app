@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import {
   Plus,
   Save,
-  Circle,
   Upload,
   Image as ImageIcon,
   Trash,
@@ -20,7 +19,6 @@ import GenogramSwitcher from './GenogramSwitcher';
 import CloudSyncButton from './CloudSyncButton';
 import { useGenogramStore } from '@/lib/store/genogramStore';
 import { Person } from '@/lib/types/person';
-import { JunctionNode } from '@/lib/types/junction';
 import { useReactFlow, useViewport, getRectOfNodes, getTransformForBounds } from 'reactflow';
 import { toPng } from 'html-to-image';
 import { buildSnapshot, parseSnapshot } from '@/lib/io/snapshot';
@@ -47,7 +45,7 @@ function downloadDataUrl(dataUrl: string, filename: string) {
 }
 
 export default function Toolbar() {
-  const { addPerson, addJunction, hydrate, reset } = useGenogramStore();
+  const { addPerson, hydrate, reset } = useGenogramStore();
   const viewport = useViewport();
   const { getNodes } = useReactFlow();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -76,24 +74,6 @@ export default function Toolbar() {
     };
 
     addPerson(newPerson);
-  };
-
-  const handleAddJunction = () => {
-    const { x, y, zoom } = viewport;
-    const screenWidth = window.innerWidth;
-    const screenHeight = window.innerHeight;
-
-    const centerX = (screenWidth / 2 - x) / zoom;
-    const centerY = (screenHeight / 2 - y) / zoom;
-
-    const newJunction: JunctionNode = {
-      id: `junction-${Date.now()}`,
-      position: { x: centerX, y: centerY },
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    addJunction(newJunction);
   };
 
   const handleSaveJson = () => {
@@ -255,10 +235,6 @@ export default function Toolbar() {
       <Button onClick={handleAddPerson} size="sm">
         <Plus className="w-4 h-4 mr-2" />
         Add Person
-      </Button>
-      <Button onClick={handleAddJunction} variant="outline" size="sm">
-        <Circle className="w-4 h-4 mr-2" />
-        Add Junction
       </Button>
 
       <div className="mx-1 h-7 w-px self-center bg-gray-200" />

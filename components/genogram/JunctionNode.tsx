@@ -1,53 +1,27 @@
 'use client';
 
-import React, { memo, useState } from 'react';
-import { Handle, Position, NodeProps } from 'reactflow';
+import React, { memo } from 'react';
+import { Handle, Position } from 'reactflow';
 
-function JunctionNodeImpl({ selected }: NodeProps) {
-  const [isHovered, setIsHovered] = useState(false);
-
+/**
+ * Junction nodes are non-interactive routing points used by the auto-layout
+ * to draw clean sibling lines (genogram convention). They are not exposed in
+ * the UI; users do not create, click, or delete them directly.
+ */
+function JunctionNodeImpl() {
   return (
     <div
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      className={`relative flex h-3 w-3 items-center justify-center pointer-events-auto ${
-        selected ? 'ring-2 ring-blue-400 rounded-full' : ''
-      }`}
+      aria-hidden
+      className="relative flex h-2 w-2 items-center justify-center pointer-events-none"
     >
-      <div
-        className={`h-3 w-3 rounded-full transition-all duration-200 ${
-          isHovered ? 'opacity-100 bg-gray-800' : selected ? 'bg-blue-500' : 'opacity-90 bg-gray-700'
-        }`}
-      />
+      {/* Tiny dot at the routing point so the meeting of lines reads cleanly
+          even when the surrounding strokes don't perfectly align on retina. */}
+      <div className="h-1 w-1 rounded-full bg-gray-700 opacity-70" />
 
-      <Handle
-        id="top"
-        type="target"
-        position={Position.Top}
-        isConnectable
-        className={`w-3 h-3 rounded-full transition-opacity duration-200 ${isHovered ? 'opacity-100 bg-blue-500' : 'opacity-0'}`}
-      />
-      <Handle
-        id="bottom"
-        type="source"
-        position={Position.Bottom}
-        isConnectable
-        className={`w-3 h-3 rounded-full transition-opacity duration-200 ${isHovered ? 'opacity-100 bg-blue-500' : 'opacity-0'}`}
-      />
-      <Handle
-        id="left"
-        type="source"
-        position={Position.Left}
-        isConnectable
-        className={`w-3 h-3 rounded-full transition-opacity duration-200 ${isHovered ? 'opacity-100 bg-blue-500' : 'opacity-0'}`}
-      />
-      <Handle
-        id="right"
-        type="source"
-        position={Position.Right}
-        isConnectable
-        className={`w-3 h-3 rounded-full transition-opacity duration-200 ${isHovered ? 'opacity-100 bg-blue-500' : 'opacity-0'}`}
-      />
+      <Handle id="top" type="target" position={Position.Top} isConnectable={false} className="!h-px !w-px !min-h-0 !min-w-0 !border-0 !bg-transparent" />
+      <Handle id="bottom" type="source" position={Position.Bottom} isConnectable={false} className="!h-px !w-px !min-h-0 !min-w-0 !border-0 !bg-transparent" />
+      <Handle id="left" type="source" position={Position.Left} isConnectable={false} className="!h-px !w-px !min-h-0 !min-w-0 !border-0 !bg-transparent" />
+      <Handle id="right" type="source" position={Position.Right} isConnectable={false} className="!h-px !w-px !min-h-0 !min-w-0 !border-0 !bg-transparent" />
     </div>
   );
 }

@@ -96,10 +96,12 @@ interface GenogramState {
   /** Delete a junction-edge. */
   deleteJunctionEdge: (id: string) => void;
 
-  /** Mark a person as selected; clears any selected relationship. */
+  /** Mark a person as selected; clears any other selection. */
   setSelectedPerson: (id: string | null) => void;
-  /** Mark a relationship as selected; clears any selected person. */
+  /** Mark a relationship as selected; clears any other selection. */
   setSelectedRelationship: (id: string | null) => void;
+  /** Clear every kind of selection. */
+  clearSelection: () => void;
 
   /**
    * Bulk-replace state from a snapshot (persistence / JSON import). Only
@@ -156,14 +158,26 @@ export const useGenogramStore = create<GenogramState>((set) => ({
 
   // Cascade: when a person is deleted, drop any relationships that reference them.
   deletePerson: (id) =>
-    set((state) => ({
-      people: state.people.filter((p) => p.id !== id),
-      relationships: state.relationships.filter(
-        (r) => r.person1Id !== id && r.person2Id !== id
-      ),
-      selectedPersonId:
-        state.selectedPersonId === id ? null : state.selectedPersonId,
-    })),
+    set((state) => {
+      const removedRelIds = new Set(
+        state.relationships
+          .filter((r) => r.person1Id === id || r.person2Id === id)
+          .map((r) => r.id)
+      );
+      return {
+        people: state.people.filter((p) => p.id !== id),
+        relationships: state.relationships.filter(
+          (r) => r.person1Id !== id && r.person2Id !== id
+        ),
+        selectedPersonId:
+          state.selectedPersonId === id ? null : state.selectedPersonId,
+        selectedRelationshipId:
+          state.selectedRelationshipId &&
+          removedRelIds.has(state.selectedRelationshipId)
+            ? null
+            : state.selectedRelationshipId,
+      };
+    }),
 
   addRelationship: (relationship) =>
     set((state) => {
@@ -279,6 +293,9 @@ export const useGenogramStore = create<GenogramState>((set) => ({
 
   setSelectedRelationship: (id) =>
     set({ selectedRelationshipId: id, selectedPersonId: null }),
+
+  clearSelection: () =>
+    set({ selectedPersonId: null, selectedRelationshipId: null }),
 
   hydrate: (snapshot) =>
     set((state) => ({
