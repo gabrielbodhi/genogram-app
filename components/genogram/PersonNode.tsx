@@ -72,7 +72,7 @@ function PersonNodeImpl({ data }: NodeProps<Person>) {
       onClick={handleClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="flex cursor-pointer flex-col items-center justify-center text-center transition-all hover:shadow-lg"
+      className="flex cursor-pointer flex-col items-center justify-center text-center transition-all"
     >
       {lifeLabel && (
         <div className="mb-1 inline-flex min-w-[40px] items-center justify-center rounded-full bg-gray-100 px-3 py-0.5 text-[10px] font-medium text-gray-700">

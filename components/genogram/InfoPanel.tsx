@@ -242,8 +242,8 @@ export default function InfoPanel() {
     .join(' ');
 
   return (
-    <aside className="pointer-events-auto fixed right-0 top-0 z-20 flex h-screen w-full max-w-xs sm:max-w-sm md:max-w-md lg:w-[380px] flex-col border-l bg-background/95 backdrop-blur">
-      <Card className="h-full rounded-none border-0 shadow-lg">
+    <aside className="pointer-events-auto fixed right-4 top-4 bottom-4 z-20 flex w-full max-w-xs sm:max-w-sm md:max-w-md lg:w-[380px] flex-col">
+      <Card className="h-full overflow-hidden rounded-lg border bg-background/95 shadow-lg backdrop-blur">
         <CardHeader className="relative flex flex-col items-start justify-start gap-3 pb-4 pt-6 pr-6">
           <div className="absolute right-6 top-6 flex items-center gap-1">
             {isEditing ? (
@@ -307,7 +307,7 @@ export default function InfoPanel() {
           </div>
         </CardHeader>
 
-        <CardContent className="h-[calc(100vh-9rem)] overflow-y-auto pb-6">
+        <CardContent className="h-[calc(100%-9rem)] overflow-y-auto pb-6">
           <form onSubmit={onSubmit}>
             <Tabs defaultValue="basics" className="w-full">
               <TabsList className="mb-4 grid w-full grid-cols-4">
